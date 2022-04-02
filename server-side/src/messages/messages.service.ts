@@ -1,29 +1,42 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { CreateMessagesDto } from './dto/messages.dto';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
 import { Message, MessageDocument } from './schema/messages.schema';
-
+import { User } from 'src/users/Schemas/users.schema';
+import { MessagesGateway } from './messages.gateway';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class MessagesService {
 
-    constructor(@InjectModel(Message.name) private messagesModel: Model<MessageDocument>) {}
+    private readonly logger = new Logger(MessagesService.name);
+
+    constructor(@InjectModel(Message.name) private messagesModel: Model<MessageDocument>, 
+    private messagesGateway: MessagesGateway
+    )
+    {}
     
-    async create(createMessagesDto: CreateMessagesDto): Promise<Message> 
+    async create(createMessagesDto: CreateMessagesDto, user: User): Promise<Message> 
     {
         const createdMessage = new this.messagesModel(createMessagesDto);
-        return createdMessage.save();
+        createdMessage.user = user;
+
+        await createdMessage.save();
+        const message = await this.findOne(createdMessage._id)
+        this.messagesGateway.sendNewMessage(message);
+        return message;
     }
+
 
     async findAll(): Promise<Message[]> 
     {
-        return this.messagesModel.find().exec();
+        return this.messagesModel.find().populate('user').exec();
     } 
     
     async findOne(id: string): Promise<Message> 
     {
-        return this.messagesModel.findOne({ _id: id }).exec();
+        return this.messagesModel.findOne({ _id: id }).populate('user').exec();
     }
     
     async delete(id: string) 
@@ -39,9 +52,18 @@ export class MessagesService {
     }
 
 
-    private messages: Message[] = []; 
-    private id: number = 0;
-    private date: Date;
+    @Cron(CronExpression.EVERY_30_SECONDS)
+    handleCron() {
+      this.logger.debug('Called every 30 seconds');
+    }
+
+    // async random(): Promise<Message> {
+    //     const [message] = await this.messagesModel.aggregate([
+    //         { $sample: { size: } }
+    //     ])
+    // }
+
+
 
 
     // getMessages(): Message[] {

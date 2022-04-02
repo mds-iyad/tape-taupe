@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Post, Delete, Param, Put } from '@nestjs/common';
+import { Body, Controller, Get, Post, Delete, Param, Put, Request, UseGuards } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { CreateMessagesDto } from './dto/messages.dto';
 import { Message } from './Schema/messages.schema'
+import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 
 
 @Controller('messages')
@@ -14,8 +15,10 @@ export class MessagesController {
     }
 
     @Post()
-    createMessages(@Body() createMessagesDto: CreateMessagesDto): Promise<CreateMessagesDto> {
-        return this.messagesService.create(createMessagesDto);
+    @UseGuards(JwtAuthGuard)
+    createMessages(@Body() createMessagesDto: CreateMessagesDto, @Request() req): Promise<CreateMessagesDto> {
+        console.log(req.user)
+        return this.messagesService.create(createMessagesDto,req.user.sub);
     }
 
     @Get(':id')

@@ -18,5 +18,10 @@ export class UsersController {
     createUsers(@Body() createUsersDto: CreateUsersDto): Promise<CreateUsersDto> {
         return this.UsersService.create(createUsersDto);
     }
+    
+    @Delete(':id')
+    remove(@Param('id') id) {
+      return this.UsersService.delete(id);
+    }
 
 }
